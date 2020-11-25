@@ -22,7 +22,7 @@ unsigned int count = 0;
 unsigned int avgCount = 0;
 
 int readDelta = 500;
-int printDelta = 1000;
+int printDelta = 1000;    //Amount of time in between averaging of emg values (also prints out averageVal)
 int vibrateDelta = 1000;
 long readTime = 0;
 long printTime = 0;
