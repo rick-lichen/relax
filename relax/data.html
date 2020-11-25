@@ -1,0 +1,176 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>data</title>
+  </head>
+  <body>
+    <script src="https://www.gstatic.com/firebasejs/8.0.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.2/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.2/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.2/firebase-analytics.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+    <script
+      src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/particle-api-js@8/dist/particle.min.js"
+    ></script>
+    <!-- <<script src="data.js"></script> -->
+    <!---To draw the emg outputs-->
+    <div
+      id="chart-container"
+      style="position: relative; height: 40vh; width: 80vw"
+    >
+      <canvas id="myChart" width="400" height="400"></canvas>
+      <button id="track">Track</button>
+      <button id="clear">Clear</button>
+    </div>
+
+    <script>
+      function setup() {
+        var firebaseConfig = {
+          apiKey: "AIzaSyDqWpyvintO-cug4P2gneK2zfGvR16XhXU",
+          authDomain: "relax-27cc3.firebaseapp.com",
+          databaseURL: "https://relax-27cc3.firebaseio.com",
+          projectId: "relax-27cc3",
+          storageBucket: "relax-27cc3.appspot.com",
+          messagingSenderId: "168908919741",
+          appId: "1:168908919741:web:6a2138a205d1894dda38d4",
+          measurementId: "G-4L40K9KZ7N",
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        firebase.analytics();
+        var database = firebase.database();
+        var ref = database.ref("emg");
+        ref.on("child_added", gotData, errData);
+      }
+
+      function gotData(data) {
+        //on "value"
+        // if (data != null) {
+        //   var emg = data.val();
+        //   var keys = Object.keys(emg);
+        //   for (var i = 0; i < keys.length; i++) {
+        //     var k = keys[i];
+        //     var data = JSON.parse(emg[k].data);
+        //     var time = emg[k].published_at;
+        //     time = new Date(time);
+        //     timeString =
+        //       time.getHours() +
+        //       ":" +
+        //       time.getMinutes() +
+        //       ":" +
+        //       time.getSeconds();
+        //     xlabels.push(timeString);
+        //     ylabels.push(data.averageVal);
+        //   }
+        //   chart();
+        // }
+        //on "child_added"
+        if (data != null) {
+          var emg = data.val();
+          var data = JSON.parse(emg.data);
+          var time = emg.published_at;
+          time = new Date(time);
+          timeString =
+            time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds();
+          xlabels.push(timeString);
+          ylabels.push(data.averageVal);
+          chart();
+        }
+      }
+      function errData(data) {
+        console.log(err);
+      }
+      var xlabels = [];
+      var ylabels = [];
+      setup();
+      //chart();
+      async function chart() {
+        await gotData();
+        if ($("#myChart") != null) {
+          $("#myChart").remove();
+          $("#chart-container").append(
+            '<canvas id="myChart" width="400" height="400"></canvas>'
+          );
+        }
+        var ctx = document.getElementById("myChart").getContext("2d");
+        var myChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: xlabels,
+            datasets: [
+              {
+                label: "EMG Readings",
+                data: ylabels,
+                fill: false,
+                backgroundColor: ["rgba(255, 99, 132, 0.2)"],
+                borderColor: ["rgba(255, 99, 132, 1)"],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            maintainAspectRatio: false,
+            animation: {
+              duration: 0,
+            },
+            scales: {
+              yAxes: [
+                {
+                  ticks: {
+                    beginAtZero: true,
+                  },
+                },
+              ],
+            },
+          },
+        });
+      }
+      $("#track").click(trackSwitch);
+      $("#clear").click(clearDatabase);
+      var trackSwitch = false;
+
+      //Particle
+      // TODO: Add the access token and device ID
+      var myParticleAccessToken = "012ce02d568bb65c6ac034330d29ad3ee8172876";
+      var myDeviceId = "e00fce68058f85ccce40d570";
+      var topic = "emgFunctions";
+      var particle = new Particle();
+
+      function trackSwitch() {
+        if (trackSwitch) {
+          console.log("Track off");
+          trackSwitch = false;
+        } else {
+          console.log("Track On");
+          trackSwitch = true;
+        }
+        var fnPr = particle.callFunction({
+          deviceId: myDeviceId,
+          name: "trackSwitch",
+          argument: String(trackSwitch),
+          auth: myParticleAccessToken,
+        });
+
+        fnPr.then(
+          function (data) {
+            console.log("Function called succesfully:", data);
+          },
+          function (err) {
+            console.log("An error occurred:", err);
+          }
+        );
+      }
+      function clearDatabase() {
+        var database = firebase.database();
+        var ref = database.ref("emg");
+        ref.remove();
+      }
+    </script>
+  </body>
+</html>
