@@ -99,6 +99,7 @@ void loop()
       //Only send data if tracking is turned on
       publishStateNow = true;
     }
+    compareTime += compareDelta;
   }
   //Particle publishing state
   if (publishStateNow)
