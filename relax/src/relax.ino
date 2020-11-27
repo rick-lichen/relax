@@ -15,17 +15,19 @@ int sensorValue = 0; // value read from the pot
 int outputValue = 0; // value output to the PWM (analog out)
 
 #define filter 6
-#define filterAvg 10
+#define filterAvg 5
 double emg[filter];
 double rollingAvg[filterAvg];
 unsigned int count = 0;
 unsigned int avgCount = 0;
 
-int readDelta = 500;
-int printDelta = 1000;    //Amount of time in between averaging of emg values (also prints out averageVal)
-int vibrateDelta = 1000;
+int readDelta = 500;       //Amount of time before taking each emg reading
+int calculateDelta = 1000; //Amount of time in between averaging of emg values (also prints out averageVal and record it in rolling average)
+int compareDelta = 1000;   //Amount of time before comparing prevAvg and current averageVal
+int vibrateDelta = 1000;   //Duration of vibration
 long readTime = 0;
-long printTime = 0;
+long calculateTime = 0;
+long compareTime = 0;
 long vibrateTime = 0;
 double prevAvg = 0;
 double averageVal = 0;
@@ -63,6 +65,20 @@ void loop()
   if (time > readTime)
   {
     readVal();
+    
+    readTime += readDelta;
+  }
+  if (time > calculateTime)
+  { //Averaging value
+    averageVal = average(emg, filter);
+    rollingAvg[avgCount % filterAvg] = averageVal; //Also record average values in rolling average
+    avgCount += 1;
+    Serial.print("average value = ");
+    Serial.println(averageVal);
+    calculateTime += calculateDelta;
+  }
+  if (time > compareTime)
+  {
     double std = stdDev(rollingAvg, filterAvg);
     if (std != 0 && averageVal > prevAvg + std)
     {
@@ -77,20 +93,12 @@ void loop()
       digitalWrite(digitalOutPin, HIGH); //Vibrates
       vibrateTime += vibrateDelta;       //Stops vibrating after vibrateDelta
     }
-    readTime += readDelta;
-  }
-  if (time > printTime)
-  { //Averaging value
     prevAvg = averageVal;
-    averageVal = average(emg, filter);
-    Serial.print("average value = ");
-    Serial.println(averageVal);
     if (track)
     {
       //Only send data if tracking is turned on
       publishStateNow = true;
     }
-    printTime += printDelta;
   }
   //Particle publishing state
   if (publishStateNow)
@@ -125,8 +133,6 @@ void readVal()
   outputValue = map(sensorValue, 0, 1023, 0, 100);
   emg[count % filter] = outputValue;
   count += 1;
-  rollingAvg[avgCount % filterAvg] = averageVal; //Also record average values
-  avgCount += 1;
 }
 
 //Particle
@@ -154,9 +160,12 @@ int publishState(String arg)
 }
 int trackSwitch(String arg)
 {
-  if (arg == "true") {
+  if (arg == "true")
+  {
     track = true;
-  } else{
+  }
+  else
+  {
     track = false;
   }
   // Goal: Publish a valid JSON string containing the state of the light:
@@ -166,7 +175,7 @@ int trackSwitch(String arg)
   // TODO: Adjust variables to match your light's state variables
   // (NOTE: Be careful building the string.  C++ String operations often behave in
   //        counterintuitive ways when working with string literals (like "hi"))
-  
+
   return 0;
 }
 void getPublishState()
